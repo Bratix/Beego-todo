@@ -1,5 +1,6 @@
 {{define "content"}}
-Todo detail <br>
+ <h1>Todo detail</h1> <br>
+<h2>{{.Todo.User.Username}} is the owner</h2><br>
 {{.Todo.Id}}<br>
 {{.Todo.Todo}}<br>
 <a href="{{urlfor "MainController.Get"}}"> Home </a> <br>

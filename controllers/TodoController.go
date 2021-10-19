@@ -13,67 +13,125 @@ type TodoController struct {
 	beego.Controller
 }
 
+/* Displays details about a single todo */
 func (t *TodoController) Get() {
 
+	/* Get id from route */
 	id, _ := strconv.Atoi(t.Ctx.Input.Param(":id"))
+	/* Todo with specified id is created */
 	todo := models.Todo{Id: id}
+	/* Instance Ormer */
 	o := orm.NewOrm()
-	if err := o.Read(&todo); err != nil {
+
+	/* Return todo with the specified id and the user it belongs to */
+	err := o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
+	if err != nil {
 		fmt.Println(err)
 	}
 
+	/* Specify data to use in template and template name */
 	t.Data["Todo"] = todo
 	t.TplName = "detailView.tpl"
 }
 
+/* Function to add todos to database */
 func (t *TodoController) AddTodo() {
 
+	/* Handles post request */
 	if t.Ctx.Input.IsPost() {
+		/* Parse form and instance orm */
 		var todo models.Todo
 		t.ParseForm(&todo)
 		o := orm.NewOrm()
+
+		/* Get user id from session */
+		ses, _ := beego.GlobalSessions.SessionStart(t.Ctx.ResponseWriter, t.Ctx.Request)
+		id := ses.Get("uid").(int)
+		var user = models.User{Id: id}
+
+		/* Logged in user becomes the owner of created todo */
+		todo.User = &user
+		/* Insert todo in database and redirect to index page */
 		o.Insert(&todo)
+		fmt.Println("Succesfully added to database!")
 		t.Redirect("/", 302)
 	}
 
+	/* Handles get request */
 	t.Data["Form"] = &models.Todo{}
 	t.TplName = "addTodo.tpl"
 }
 
 func (t *TodoController) EditTodo() {
+	/* Instance orm */
 	o := orm.NewOrm()
+	/* Handles post request */
 	if t.Ctx.Input.IsPost() {
-
+		/* Get id from url */
 		id, _ := strconv.Atoi(t.Ctx.Input.Param(":id"))
 		var todo = models.Todo{Id: id}
+		/* Get the id of the logged in user */
+		ses, _ := beego.GlobalSessions.SessionStart(t.Ctx.ResponseWriter, t.Ctx.Request)
+		uid := ses.Get("uid").(int)
+		/* Querry table to find the selected todo */
+		err := o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
 
-		if o.Read(&todo) == nil {
+		/* If no error occured and the todo user id matches logged in user id todo gets updated */
+		if err == nil && todo.User.Id == uid {
+
 			t.ParseForm(&todo)
 			if _, err := o.Update(&todo); err == nil {
-				fmt.Println("successful edit")
+				fmt.Println("Successful edit!")
 				t.Redirect("/", 302)
 			}
+		} else {
+			/* If todo didn't get updated */
+			fmt.Println("Unsuccessful edit!")
+			t.Redirect("/", 302)
 		}
 	}
 
+	/* get id of todo */
 	id, _ := strconv.Atoi(t.Ctx.Input.Param(":id"))
 	var todo = models.Todo{Id: id}
+	/* Get the todo with specified id (error should have been handled) */
+	_ = o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
 
-	if o.Read(&todo) == nil {
+	/* Get id of logged in user */
+	ses, _ := beego.GlobalSessions.SessionStart(t.Ctx.ResponseWriter, t.Ctx.Request)
+	uid := ses.Get("uid").(int)
+
+	/* If the logged in user is the owner of todo he gets the edit form, else he gets redirected to index page */
+	if todo.User.Id == uid {
 		t.Data["Form"] = &todo
+		t.TplName = "editTodo.tpl"
 	} else {
+		fmt.Println("User isn't the owner of todo!")
 		t.Redirect("/", 302)
 	}
-
-	t.TplName = "editTodo.tpl"
 }
 
+/* Deletes todos from database */
 func (t *TodoController) DeleteTodo() {
+	/* Get id from url */
 	id, _ := strconv.Atoi(t.Ctx.Input.Param(":id"))
-
+	/* New orm instance */
 	o := orm.NewOrm()
-	if num, err := o.Delete(&models.Todo{Id: id}); err == nil {
-		fmt.Println(num)
+	var todo models.Todo
+	/* get requested todo */
+	err := o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
+	/* get logged in user id */
+	ses, _ := beego.GlobalSessions.SessionStart(t.Ctx.ResponseWriter, t.Ctx.Request)
+	uid := ses.Get("uid").(int)
+	/* If no error occured and todo owner is the same as logged in user delete the record, else print out that user isn't the owner */
+	if err == nil && todo.User.Id == uid {
+		if num, err := o.Delete(&models.Todo{Id: id}); err == nil {
+			fmt.Println(num)
+			fmt.Println("Record deleted!")
+		}
+	} else {
+		fmt.Println("User isn't the owner of todo!")
 	}
+	/* Redirect to index page */
 	t.Redirect("/", 302)
 }

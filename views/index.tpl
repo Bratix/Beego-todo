@@ -1,6 +1,7 @@
 {{define "content"}}
 
-<h1>Hello {{ .Username }} </h1>
+<h1>Hello {{ .Username }} </h1> 
+<h2><a href="{{urlfor "LoginController.Logout"}}"> Logout </a> <br></h2>
 {{range $id,$todo := .Todos}}
 Todo id is {{$todo.Id}} <br>
 {{$todo.Todo}}<br>
