@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"fmt"
+	"net/http"
+	"todoapp/filters"
 	"todoapp/models"
 
 	"github.com/astaxie/beego"
@@ -27,7 +30,7 @@ func (rc *RegisterController) Post() {
 	/* check if hasing produced an error */
 	if err != nil {
 		println("Error hashing password!")
-		rc.Redirect("/register", 302)
+		rc.Redirect("/register", http.StatusFound)
 	}
 
 	/* the hashed password gets stored */
@@ -40,19 +43,18 @@ func (rc *RegisterController) Post() {
 	/* If an error occured redirect to /register */
 	if err != nil {
 		println(err)
-		rc.Redirect("/register", 302)
+		rc.Redirect("/register", http.StatusFound)
 	}
 
-	/* Starts a session and sets the uid and username to the values submited by the user */
-	ses, err := beego.GlobalSessions.SessionStart(rc.Ctx.ResponseWriter, rc.Ctx.Request)
+	token, err := filters.CreateToken(user.Id)
 
 	if err != nil {
-		println("Error logging in user!")
-		rc.Redirect("/login", 302)
+		fmt.Println("Error creating token", err)
+		rc.Redirect("/", http.StatusFound)
+	} else {
+		cookie := filters.CreateCookieWithJWT(token)
+		http.SetCookie(rc.Ctx.ResponseWriter, cookie)
 	}
 
-	ses.Set("uid", user.Id)
-	ses.Set("username", user.Username)
-	rc.Redirect("/", 302)
-
+	rc.Redirect("/", http.StatusFound)
 }

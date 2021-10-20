@@ -10,6 +10,9 @@
 <body>
   
     {{block "content" .}} {{end}}
-  
+  <script>
+    let x = document.cookie
+    console.log(x);
+</script>
 </body>
 </html>

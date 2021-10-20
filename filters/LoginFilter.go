@@ -1,6 +1,8 @@
 package filters
 
 import (
+	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/astaxie/beego/context"
@@ -14,8 +16,11 @@ var FilterLoggedIn = func(ctx *context.Context) {
 	}
 
 	/* if the user id can't be accessed from the session or it is 0 the user gets redirected to the login page */
-	id, ok := ctx.Input.Session("uid").(int)
-	if !ok || id == 0 {
-		ctx.Redirect(302, "/login")
+	id, err := ExtractTokenMetadata(ctx.Request)
+
+	if err != nil || id == 0 {
+		fmt.Println("Auth token not found: ", err)
+		fmt.Println("Id : ", id)
+		ctx.Redirect(http.StatusTemporaryRedirect, "/login")
 	}
 }

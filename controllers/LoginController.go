@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"fmt"
+	"net/http"
+	"todoapp/filters"
 	"todoapp/models"
 
 	"github.com/astaxie/beego"
@@ -34,38 +36,35 @@ func (lc *LoginController) Post() {
 	/* error if something goes wrong when running the query or if no results are found*/
 	if err != nil {
 		println("Error querring database")
-		lc.Redirect("/login", 302)
+		lc.Redirect("/login", http.StatusFound)
 	} else if num == 0 {
 		fmt.Println("No such username in database!")
-		lc.Redirect("/login", 302)
-	}
-
-	/* Starting the session and hangling the error */
-	ses, err := beego.GlobalSessions.SessionStart(lc.Ctx.ResponseWriter, lc.Ctx.Request)
-	if err != nil {
-		fmt.Println(err)
-		lc.Redirect("/login", 302)
+		lc.Redirect("/login", http.StatusFound)
 	}
 
 	/* User gets logged in if the password matches the one in the database */
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(userform.Password))
 	if err == nil {
-		ses.Set("uid", user.Id)
-		ses.Set("username", user.Username)
+		token, err := filters.CreateToken(user.Id)
+
+		if err != nil {
+			fmt.Println("Error creating token", err)
+		} else {
+			cookie := filters.CreateCookieWithJWT(token)
+			http.SetCookie(lc.Ctx.ResponseWriter, cookie)
+		}
+
 	} else {
 		fmt.Println("Wrong password!")
 	}
-
+	fmt.Println("Login post method")
 	/* redirect to index page */
-	lc.Redirect("/", 302)
+	lc.Redirect("/", http.StatusFound)
 
 }
 
 /* Logout function it sets uid to 0 and username to an epmty string */
 func (lc *LoginController) Logout() {
-	ses, _ := beego.GlobalSessions.SessionStart(lc.Ctx.ResponseWriter, lc.Ctx.Request)
-
-	ses.Set("uid", 0)
-	ses.Set("username", "")
-	lc.Redirect("/", 302)
+	filters.DeleteCookieWithJWT(lc.Ctx.ResponseWriter)
+	lc.Redirect("/login", http.StatusTemporaryRedirect)
 }

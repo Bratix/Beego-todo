@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"fmt"
+	"todoapp/filters"
 	"todoapp/models"
 
 	"github.com/astaxie/beego"
@@ -17,20 +19,20 @@ func (c *MainController) Get() {
 	o := orm.NewOrm()
 	var todos []*models.Todo
 	/* Acquiring the session that is created by login or register controller */
-	ses, _ := beego.GlobalSessions.SessionStart(c.Ctx.ResponseWriter, c.Ctx.Request)
-	/* Getting the username and id from session  */
-	username := ses.Get("username")
-	uid := ses.Get("uid").(int)
+
+	uid, err := filters.ExtractTokenMetadata(c.Ctx.Request)
+	if err != nil {
+		fmt.Println("User not logged in: ", err)
+	}
 
 	/* Query the database to find all the todos that have the logged in user foreign key */
-	num, err := o.QueryTable("todo").Filter("User__id", uid).All(&todos)
+	_, err = o.QueryTable("todo").Filter("User__id", uid).All(&todos)
 	if err != nil {
-		println(num)
+		fmt.Println("Error querrying the database for todos: ", err)
 	}
 
 	/* Adding data to use in the template */
 	c.Data["Todos"] = todos
-	c.Data["Username"] = username
 	/* Template name */
 	c.TplName = "index.tpl"
 }

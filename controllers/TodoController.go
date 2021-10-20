@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
+	"todoapp/filters"
 	"todoapp/models"
 
 	"github.com/astaxie/beego"
@@ -45,16 +47,18 @@ func (t *TodoController) AddTodo() {
 		o := orm.NewOrm()
 
 		/* Get user id from session */
-		ses, _ := beego.GlobalSessions.SessionStart(t.Ctx.ResponseWriter, t.Ctx.Request)
-		id := ses.Get("uid").(int)
-		var user = models.User{Id: id}
+		uid, err := filters.ExtractTokenMetadata(t.Ctx.Request)
+		if err != nil {
+			fmt.Println("User not logged in: ", err)
+		}
+		var user = models.User{Id: uid}
 
 		/* Logged in user becomes the owner of created todo */
 		todo.User = &user
 		/* Insert todo in database and redirect to index page */
 		o.Insert(&todo)
 		fmt.Println("Succesfully added to database!")
-		t.Redirect("/", 302)
+		t.Redirect("/", http.StatusFound)
 	}
 
 	/* Handles get request */
@@ -71,10 +75,12 @@ func (t *TodoController) EditTodo() {
 		id, _ := strconv.Atoi(t.Ctx.Input.Param(":id"))
 		var todo = models.Todo{Id: id}
 		/* Get the id of the logged in user */
-		ses, _ := beego.GlobalSessions.SessionStart(t.Ctx.ResponseWriter, t.Ctx.Request)
-		uid := ses.Get("uid").(int)
+		uid, err := filters.ExtractTokenMetadata(t.Ctx.Request)
+		if err != nil {
+			fmt.Println("User not logged in: ", err)
+		}
 		/* Querry table to find the selected todo */
-		err := o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
+		err = o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
 
 		/* If no error occured and the todo user id matches logged in user id todo gets updated */
 		if err == nil && todo.User.Id == uid {
@@ -82,12 +88,12 @@ func (t *TodoController) EditTodo() {
 			t.ParseForm(&todo)
 			if _, err := o.Update(&todo); err == nil {
 				fmt.Println("Successful edit!")
-				t.Redirect("/", 302)
+				t.Redirect("/", http.StatusFound)
 			}
 		} else {
 			/* If todo didn't get updated */
 			fmt.Println("Unsuccessful edit!")
-			t.Redirect("/", 302)
+			t.Redirect("/", http.StatusFound)
 		}
 	}
 
@@ -98,8 +104,11 @@ func (t *TodoController) EditTodo() {
 	_ = o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
 
 	/* Get id of logged in user */
-	ses, _ := beego.GlobalSessions.SessionStart(t.Ctx.ResponseWriter, t.Ctx.Request)
-	uid := ses.Get("uid").(int)
+	uid, err := filters.ExtractTokenMetadata(t.Ctx.Request)
+	if err != nil {
+		fmt.Println("User not logged in: ", err)
+		t.Redirect("/", http.StatusFound)
+	}
 
 	/* If the logged in user is the owner of todo he gets the edit form, else he gets redirected to index page */
 	if todo.User.Id == uid {
@@ -107,7 +116,7 @@ func (t *TodoController) EditTodo() {
 		t.TplName = "editTodo.tpl"
 	} else {
 		fmt.Println("User isn't the owner of todo!")
-		t.Redirect("/", 302)
+		t.Redirect("/", http.StatusFound)
 	}
 }
 
@@ -118,11 +127,16 @@ func (t *TodoController) DeleteTodo() {
 	/* New orm instance */
 	o := orm.NewOrm()
 	var todo models.Todo
-	/* get requested todo */
-	err := o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
+
 	/* get logged in user id */
-	ses, _ := beego.GlobalSessions.SessionStart(t.Ctx.ResponseWriter, t.Ctx.Request)
-	uid := ses.Get("uid").(int)
+	uid, err := filters.ExtractTokenMetadata(t.Ctx.Request)
+	if err != nil {
+		fmt.Println("User not logged in: ", err)
+		t.Redirect("/", http.StatusFound)
+	}
+	/* get requested todo from database*/
+	err = o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
+
 	/* If no error occured and todo owner is the same as logged in user delete the record, else print out that user isn't the owner */
 	if err == nil && todo.User.Id == uid {
 		if num, err := o.Delete(&models.Todo{Id: id}); err == nil {
@@ -133,5 +147,5 @@ func (t *TodoController) DeleteTodo() {
 		fmt.Println("User isn't the owner of todo!")
 	}
 	/* Redirect to index page */
-	t.Redirect("/", 302)
+	t.Redirect("/", http.StatusFound)
 }

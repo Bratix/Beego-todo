@@ -6,5 +6,7 @@
 
 <a href="{{urlfor "RegisterController.Get" }}"> Register </a>
 
+
+
 {{end}}
 {{template "_base.tpl" .}}

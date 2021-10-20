@@ -25,4 +25,5 @@ func main() {
 	orm.RunSyncdb("default", false, false)
 	/* Run beego server */
 	beego.Run()
+
 }
