@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"todoapp/filters"
+	"todoapp/global"
 	"todoapp/models"
 
 	"github.com/astaxie/beego"
@@ -16,7 +16,7 @@ type TodoController struct {
 }
 
 /* Displays details about a single todo */
-func (t *TodoController) Get() {
+func (t *TodoController) GetTodo() {
 
 	/* Get id from route */
 	id, _ := strconv.Atoi(t.Ctx.Input.Param(":id"))
@@ -47,11 +47,11 @@ func (t *TodoController) AddTodo() {
 		o := orm.NewOrm()
 
 		/* Get user id from session */
-		uid, err := filters.ExtractTokenMetadata(t.Ctx.Request)
+		uid, err := global.ExtractTokenMetadata("AccessToken", t.Ctx.Request)
 		if err != nil {
 			fmt.Println("User not logged in: ", err)
 		}
-		var user = models.User{Id: uid}
+		var user = models.User{Id: uid.UserId}
 
 		/* Logged in user becomes the owner of created todo */
 		todo.User = &user
@@ -75,7 +75,7 @@ func (t *TodoController) EditTodo() {
 		id, _ := strconv.Atoi(t.Ctx.Input.Param(":id"))
 		var todo = models.Todo{Id: id}
 		/* Get the id of the logged in user */
-		uid, err := filters.ExtractTokenMetadata(t.Ctx.Request)
+		uid, err := global.ExtractTokenMetadata("AccessToken", t.Ctx.Request)
 		if err != nil {
 			fmt.Println("User not logged in: ", err)
 		}
@@ -83,7 +83,7 @@ func (t *TodoController) EditTodo() {
 		err = o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
 
 		/* If no error occured and the todo user id matches logged in user id todo gets updated */
-		if err == nil && todo.User.Id == uid {
+		if err == nil && todo.User.Id == uid.UserId {
 
 			t.ParseForm(&todo)
 			if _, err := o.Update(&todo); err == nil {
@@ -104,18 +104,19 @@ func (t *TodoController) EditTodo() {
 	_ = o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
 
 	/* Get id of logged in user */
-	uid, err := filters.ExtractTokenMetadata(t.Ctx.Request)
+	userAccessDetail, err := global.ExtractTokenMetadata("AccessToken", t.Ctx.Request)
 	if err != nil {
 		fmt.Println("User not logged in: ", err)
 		t.Redirect("/", http.StatusFound)
 	}
+	/* Get user id from session */
 
 	/* If the logged in user is the owner of todo he gets the edit form, else he gets redirected to index page */
-	if todo.User.Id == uid {
+	if todo.User.Id == userAccessDetail.UserId {
 		t.Data["Form"] = &todo
 		t.TplName = "editTodo.tpl"
 	} else {
-		fmt.Println("User isn't the owner of todo!")
+		fmt.Println("User isn't the owner of todo!", todo.User.Id, " != ", userAccessDetail.UserId)
 		t.Redirect("/", http.StatusFound)
 	}
 }
@@ -129,7 +130,7 @@ func (t *TodoController) DeleteTodo() {
 	var todo models.Todo
 
 	/* get logged in user id */
-	uid, err := filters.ExtractTokenMetadata(t.Ctx.Request)
+	uid, err := global.ExtractTokenMetadata("AccessToken", t.Ctx.Request)
 	if err != nil {
 		fmt.Println("User not logged in: ", err)
 		t.Redirect("/", http.StatusFound)
@@ -138,10 +139,10 @@ func (t *TodoController) DeleteTodo() {
 	err = o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
 
 	/* If no error occured and todo owner is the same as logged in user delete the record, else print out that user isn't the owner */
-	if err == nil && todo.User.Id == uid {
+	if err == nil && todo.User.Id == uid.UserId {
 		if num, err := o.Delete(&models.Todo{Id: id}); err == nil {
 			fmt.Println(num)
-			fmt.Println("Record deleted!")
+			fmt.Println("Record deleted! todo user id and logged in user id:", todo.User.Id, " ", uid.UserId)
 		}
 	} else {
 		fmt.Println("User isn't the owner of todo!")

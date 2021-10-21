@@ -5,7 +5,7 @@
 {{range $id,$todo := .Todos}}
 Todo id is {{$todo.Id}} <br>
 {{$todo.Todo}}<br>
-<a href="{{urlfor "TodoController.Get" ":id" $todo.Id}}"> Details </a> <br>
+<a href="{{urlfor "TodoController.GetTodo" ":id" $todo.Id}}"> Details </a> <br>
 <a href="{{urlfor "TodoController.EditTodo" ":id" $todo.Id}}"> Edit Todo </a> <br>
 <a href="{{urlfor "TodoController.DeleteTodo" ":id" $todo.Id}}"> Delete Todo </a> <br>
 ____________________<br>

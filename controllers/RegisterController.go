@@ -3,7 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
-	"todoapp/filters"
+	"todoapp/global"
 	"todoapp/models"
 
 	"github.com/astaxie/beego"
@@ -46,14 +46,14 @@ func (rc *RegisterController) Post() {
 		rc.Redirect("/register", http.StatusFound)
 	}
 
-	token, err := filters.CreateToken(user.Id)
+	token, err := global.CreateToken(user.Id)
 
 	if err != nil {
 		fmt.Println("Error creating token", err)
 		rc.Redirect("/", http.StatusFound)
 	} else {
-		cookie := filters.CreateCookieWithJWT(token)
-		http.SetCookie(rc.Ctx.ResponseWriter, cookie)
+		global.Authenticate(user.Id, token, rc.Ctx.ResponseWriter)
+		fmt.Println(token)
 	}
 
 	rc.Redirect("/", http.StatusFound)

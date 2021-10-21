@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"todoapp/global"
 
 	"github.com/astaxie/beego/context"
 )
@@ -16,11 +17,20 @@ var FilterLoggedIn = func(ctx *context.Context) {
 	}
 
 	/* if the user id can't be accessed from the session or it is 0 the user gets redirected to the login page */
-	id, err := ExtractTokenMetadata(ctx.Request)
 
-	if err != nil || id == 0 {
+	_, err := global.ExtractTokenMetadata("AccessToken", ctx.Request)
+	if err != nil {
 		fmt.Println("Auth token not found: ", err)
-		fmt.Println("Id : ", id)
+
+		errRefresh := global.RefreshToken(ctx.ResponseWriter, ctx.Request)
+		if errRefresh == nil {
+			fmt.Println("Access token refreshed!")
+			ctx.Redirect(http.StatusFound, ctx.Request.RequestURI)
+		} else {
+			fmt.Println("Error refresing token!", errRefresh)
+		}
+
 		ctx.Redirect(http.StatusTemporaryRedirect, "/login")
 	}
+
 }

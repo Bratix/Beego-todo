@@ -3,7 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
-	"todoapp/filters"
+	"todoapp/global"
 	"todoapp/models"
 
 	"github.com/astaxie/beego"
@@ -45,19 +45,17 @@ func (lc *LoginController) Post() {
 	/* User gets logged in if the password matches the one in the database */
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(userform.Password))
 	if err == nil {
-		token, err := filters.CreateToken(user.Id)
+		token, err := global.CreateToken(user.Id)
 
 		if err != nil {
 			fmt.Println("Error creating token", err)
 		} else {
-			cookie := filters.CreateCookieWithJWT(token)
-			http.SetCookie(lc.Ctx.ResponseWriter, cookie)
+			global.Authenticate(user.Id, token, lc.Ctx.ResponseWriter)
 		}
 
 	} else {
 		fmt.Println("Wrong password!")
 	}
-	fmt.Println("Login post method")
 	/* redirect to index page */
 	lc.Redirect("/", http.StatusFound)
 
@@ -65,6 +63,16 @@ func (lc *LoginController) Post() {
 
 /* Logout function it sets uid to 0 and username to an epmty string */
 func (lc *LoginController) Logout() {
-	filters.DeleteCookieWithJWT(lc.Ctx.ResponseWriter)
+	/* filters.DeleteCookieWithJWT(lc.Ctx.ResponseWriter) */
+
+	accessTokenDetails, errAccess := global.ExtractTokenMetadata("AccessToken", lc.Ctx.Request)
+	refreshTokenDetails, errRefresh := global.ExtractTokenMetadata("RefreshToken", lc.Ctx.Request)
+
+	if errAccess != nil && errRefresh != nil {
+		lc.Redirect("/login", http.StatusTemporaryRedirect)
+	}
+
+	global.Logout(accessTokenDetails.Uuid, refreshTokenDetails.Uuid, lc.Ctx.ResponseWriter)
+
 	lc.Redirect("/login", http.StatusTemporaryRedirect)
 }

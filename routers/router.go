@@ -11,7 +11,7 @@ func init() {
 	/* Static route leads to / */
 	beego.Router("/", &controllers.MainController{})
 	/* Route with parameter that we can access */
-	beego.Router("/todo/:id", &controllers.TodoController{})
+	beego.Router("/todo/:id", &controllers.TodoController{}, "get:GetTodo")
 	/* Requesting a specific method to handle a server call */
 	beego.Router("/add", &controllers.TodoController{}, "get,post:AddTodo")
 	beego.Router("/edit/:id", &controllers.TodoController{}, "get,post:EditTodo")

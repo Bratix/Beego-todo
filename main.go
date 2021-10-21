@@ -1,6 +1,7 @@
 package main
 
 import (
+	"todoapp/global"
 	"todoapp/models"
 	_ "todoapp/routers"
 
@@ -10,7 +11,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-/* initializes orm */
+/* initialize function */
 func init() {
 	/* Orm driver */
 	orm.RegisterDriver("mysql", orm.DRMySQL)
@@ -21,6 +22,9 @@ func init() {
 }
 
 func main() {
+	/* Connect to redis */
+	global.CreateRedisConnection()
+	defer global.Redisclient.Close()
 	/* Sync db */
 	orm.RunSyncdb("default", false, false)
 	/* Run beego server */
