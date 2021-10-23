@@ -10,6 +10,7 @@ import (
 
 var Redisclient *redis.Client
 
+/* Called in the main function, establishes connection to reddis */
 func CreateRedisConnection() {
 	dsn := EnviromentVariable("REDIS_DSN")
 	Redisclient = redis.NewClient(&redis.Options{
@@ -22,6 +23,7 @@ func CreateRedisConnection() {
 	}
 }
 
+/* Inserts token details into redis */
 func CreateAuth(userid int, td *models.TokenDetails) error {
 	atexpire := time.Unix(td.AtExpires, 0)
 	rtexpire := time.Unix(td.RtExpires, 0)
@@ -40,6 +42,7 @@ func CreateAuth(userid int, td *models.TokenDetails) error {
 	return nil
 }
 
+/* Checks if there is an authentication with specified access details */
 func CheckAuth(accessDetails *models.ExtractedTokenData) (int, error) {
 	userIdstring, err := Redisclient.Get(accessDetails.Uuid).Result()
 	if err != nil {
@@ -51,6 +54,7 @@ func CheckAuth(accessDetails *models.ExtractedTokenData) (int, error) {
 	return int(userId), nil
 }
 
+/* Check if there is a specified refresh token */
 func CheckRefreshToken(refreshTokenUuid string) error {
 	_, err := Redisclient.Get(refreshTokenUuid).Result()
 	if err != nil {
@@ -60,6 +64,7 @@ func CheckRefreshToken(refreshTokenUuid string) error {
 	return nil
 }
 
+/* Delete access and refresh token from redis */
 func DeleteAuth(AccessUuid, RefreshUuid string) (int64, error) {
 	_, err := Redisclient.Del(AccessUuid).Result()
 	if err != nil {
@@ -73,6 +78,7 @@ func DeleteAuth(AccessUuid, RefreshUuid string) (int64, error) {
 	return 0, nil
 }
 
+/* Delete refresh token from redis */
 func DeleteRefreshToken(RefreshUuid string) (int64, error) {
 	_, err := Redisclient.Del(RefreshUuid).Result()
 	if err != nil {

@@ -1,14 +1,12 @@
 package global
 
 import (
-	"fmt"
 	"net/http"
 	"todoapp/models"
 )
 
 /* Authenticate user */
 func Authenticate(userId int, td *models.TokenDetails, w http.ResponseWriter) {
-	fmt.Println("Creating tokens!!!!!!!")
 	cookie := CreateCookieWithJWT("AccessToken", td.AccessToken)
 	http.SetCookie(w, cookie)
 	cookie = CreateCookieWithJWT("RefreshToken", td.RefreshToken)

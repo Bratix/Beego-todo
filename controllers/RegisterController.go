@@ -39,21 +39,21 @@ func (rc *RegisterController) Post() {
 	/* instance Ormer and insert the user into the database */
 	o := orm.NewOrm()
 	_, err = o.Insert(&user)
-
+	fmt.Println(user)
 	/* If an error occured redirect to /register */
 	if err != nil {
 		println(err)
 		rc.Redirect("/register", http.StatusFound)
 	}
 
+	/* Create tokens and if no error occured authenticate the uzer */
 	token, err := global.CreateToken(user.Id)
 
 	if err != nil {
-		fmt.Println("Error creating token", err)
+		fmt.Println("Error creating token: ", err)
 		rc.Redirect("/", http.StatusFound)
 	} else {
 		global.Authenticate(user.Id, token, rc.Ctx.ResponseWriter)
-		fmt.Println(token)
 	}
 
 	rc.Redirect("/", http.StatusFound)

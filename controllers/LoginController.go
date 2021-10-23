@@ -31,14 +31,11 @@ func (lc *LoginController) Post() {
 
 	/* Query the database for a user that has the entered username as username */
 	user := models.User{}
-	num, err := o.QueryTable("user").Filter("username", userform.Username).Distinct().All(&user)
+	err := o.QueryTable("user").Filter("username", userform.Username).One(&user)
 
 	/* error if something goes wrong when running the query or if no results are found*/
 	if err != nil {
-		println("Error querring database")
-		lc.Redirect("/login", http.StatusFound)
-	} else if num == 0 {
-		fmt.Println("No such username in database!")
+		fmt.Println("Error querrying database: ", err)
 		lc.Redirect("/login", http.StatusFound)
 	}
 
@@ -48,7 +45,7 @@ func (lc *LoginController) Post() {
 		token, err := global.CreateToken(user.Id)
 
 		if err != nil {
-			fmt.Println("Error creating token", err)
+			fmt.Println("Error creating token: ", err)
 		} else {
 			global.Authenticate(user.Id, token, lc.Ctx.ResponseWriter)
 		}
@@ -63,8 +60,8 @@ func (lc *LoginController) Post() {
 
 /* Logout function it sets uid to 0 and username to an epmty string */
 func (lc *LoginController) Logout() {
-	/* filters.DeleteCookieWithJWT(lc.Ctx.ResponseWriter) */
 
+	/* Extract tokens and logout function deletes them from redis and client side */
 	accessTokenDetails, errAccess := global.ExtractTokenMetadata("AccessToken", lc.Ctx.Request)
 	refreshTokenDetails, errRefresh := global.ExtractTokenMetadata("RefreshToken", lc.Ctx.Request)
 

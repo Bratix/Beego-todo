@@ -28,7 +28,7 @@ func (t *TodoController) GetTodo() {
 	/* Return todo with the specified id and the user it belongs to */
 	err := o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Error querrying database: ", err)
 	}
 
 	/* Specify data to use in template and template name */
@@ -47,11 +47,8 @@ func (t *TodoController) AddTodo() {
 		o := orm.NewOrm()
 
 		/* Get user id from session */
-		uid, err := global.ExtractTokenMetadata("AccessToken", t.Ctx.Request)
-		if err != nil {
-			fmt.Println("User not logged in: ", err)
-		}
-		var user = models.User{Id: uid.UserId}
+		extractedTokenData, _ := global.ExtractTokenMetadata("AccessToken", t.Ctx.Request)
+		var user = models.User{Id: extractedTokenData.UserId}
 
 		/* Logged in user becomes the owner of created todo */
 		todo.User = &user
@@ -75,15 +72,17 @@ func (t *TodoController) EditTodo() {
 		id, _ := strconv.Atoi(t.Ctx.Input.Param(":id"))
 		var todo = models.Todo{Id: id}
 		/* Get the id of the logged in user */
-		uid, err := global.ExtractTokenMetadata("AccessToken", t.Ctx.Request)
-		if err != nil {
-			fmt.Println("User not logged in: ", err)
-		}
-		/* Querry table to find the selected todo */
-		err = o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
+		extractedTokenData, _ := global.ExtractTokenMetadata("AccessToken", t.Ctx.Request)
 
-		/* If no error occured and the todo user id matches logged in user id todo gets updated */
-		if err == nil && todo.User.Id == uid.UserId {
+		/* Querry table to find the selected todo */
+		err := o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
+
+		/* Querry table to find logged in user */
+		user := models.User{Id: extractedTokenData.UserId}
+		errUser := o.Read(&user)
+
+		/* Check if there are no errors and if logged in user is the owner of todo, an admin member or staff */
+		if err == nil && todo.User.Id == extractedTokenData.UserId || errUser == nil && user.IsAdmin || errUser == nil && user.IsStaff {
 
 			t.ParseForm(&todo)
 			if _, err := o.Update(&todo); err == nil {
@@ -104,19 +103,17 @@ func (t *TodoController) EditTodo() {
 	_ = o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
 
 	/* Get id of logged in user */
-	userAccessDetail, err := global.ExtractTokenMetadata("AccessToken", t.Ctx.Request)
-	if err != nil {
-		fmt.Println("User not logged in: ", err)
-		t.Redirect("/", http.StatusFound)
-	}
-	/* Get user id from session */
+	extractedTokenData, _ := global.ExtractTokenMetadata("AccessToken", t.Ctx.Request)
 
-	/* If the logged in user is the owner of todo he gets the edit form, else he gets redirected to index page */
-	if todo.User.Id == userAccessDetail.UserId {
+	user := models.User{Id: extractedTokenData.UserId}
+	errUser := o.Read(&user)
+
+	/* Check if there are no errors and if logged in user is the owner of todo, an admin member or staff */
+	if todo.User.Id == extractedTokenData.UserId || errUser == nil && user.IsAdmin || errUser == nil && user.IsStaff {
 		t.Data["Form"] = &todo
 		t.TplName = "editTodo.tpl"
 	} else {
-		fmt.Println("User isn't the owner of todo!", todo.User.Id, " != ", userAccessDetail.UserId)
+		fmt.Println("User can't access todo!")
 		t.Redirect("/", http.StatusFound)
 	}
 }
@@ -130,22 +127,21 @@ func (t *TodoController) DeleteTodo() {
 	var todo models.Todo
 
 	/* get logged in user id */
-	uid, err := global.ExtractTokenMetadata("AccessToken", t.Ctx.Request)
-	if err != nil {
-		fmt.Println("User not logged in: ", err)
-		t.Redirect("/", http.StatusFound)
-	}
+	extractedTokenData, _ := global.ExtractTokenMetadata("AccessToken", t.Ctx.Request)
 	/* get requested todo from database*/
-	err = o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
+	err := o.QueryTable("todo").RelatedSel().Filter("Id", id).One(&todo)
 
-	/* If no error occured and todo owner is the same as logged in user delete the record, else print out that user isn't the owner */
-	if err == nil && todo.User.Id == uid.UserId {
+	user := models.User{Id: extractedTokenData.UserId}
+	errUser := o.Read(&user)
+
+	/* Check if there are no errors and if logged in user is the owner of todo, an admin member or staff */
+	if err == nil && todo.User.Id == extractedTokenData.UserId || errUser == nil && user.IsAdmin {
 		if num, err := o.Delete(&models.Todo{Id: id}); err == nil {
 			fmt.Println(num)
-			fmt.Println("Record deleted! todo user id and logged in user id:", todo.User.Id, " ", uid.UserId)
+			fmt.Println("Record deleted!")
 		}
 	} else {
-		fmt.Println("User isn't the owner of todo!")
+		fmt.Println("User can't access todo!")
 	}
 	/* Redirect to index page */
 	t.Redirect("/", http.StatusFound)

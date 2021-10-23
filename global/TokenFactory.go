@@ -13,6 +13,7 @@ import (
 /* Creating a jwt token */
 func CreateToken(userid int) (*models.TokenDetails, error) {
 
+	/* Creating unique id fro both access and refresh token, as well as the time when they expire */
 	td := &models.TokenDetails{}
 	td.AccessUuid = uuid.NewV4().String()
 	td.AtExpires = time.Now().Add(time.Minute * 10).Unix()
@@ -36,6 +37,7 @@ func CreateToken(userid int) (*models.TokenDetails, error) {
 		return nil, err
 	}
 
+	/* Creating refresh token */
 	rtClaims := jwt.MapClaims{}
 	rtClaims["authorized"] = true
 	rtClaims["access_uuid"] = td.RefreshUuid
@@ -51,13 +53,14 @@ func CreateToken(userid int) (*models.TokenDetails, error) {
 }
 
 func RefreshToken(w http.ResponseWriter, r *http.Request) error {
-
+	/* Extracth refresh token and check for an error */
 	refreshTokenString, err := ExtractTokenMetadata("RefreshToken", r)
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
 
+	/* If the token is valid, we delete it from redis, create a new pair of tokens and authenticate the user */
 	_, err = DeleteRefreshToken(refreshTokenString.Uuid)
 
 	if err != nil {

@@ -10,9 +10,8 @@
 <body>
   
     {{block "content" .}} {{end}}
-<script>
-    let x = document.cookie
-    console.log(x);
-</script>
+<a href="{{urlfor "AdminController.GetUsers"}}"> Admin </a> <br>
+<a href="{{urlfor "StaffController.Get"}}"> Staff </a> <br>
+<a href="{{urlfor "MainController.Get"}}"> Home </a> <br>
 </body>
 </html>

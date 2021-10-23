@@ -19,7 +19,15 @@ func init() {
 	beego.Router("/register", &controllers.RegisterController{})
 	beego.Router("/login", &controllers.LoginController{})
 	beego.Router("/logout", &controllers.LoginController{}, "get:Logout")
+	beego.Router("/admin", &controllers.AdminController{}, "get:GetUsers")
+	beego.Router("/admin/addadmin/:id", &controllers.AdminController{}, "get:AddAdmin")
+	beego.Router("/admin/removeadmin/:id", &controllers.AdminController{}, "get:RemoveAdmin")
+	beego.Router("/admin/addstaff/:id", &controllers.AdminController{}, "get:AddStaff")
+	beego.Router("/admin/removestaff/:id", &controllers.AdminController{}, "get:RemoveStaff")
+	beego.Router("/staff", &controllers.StaffController{})
 
 	/* Iserting the filter */
 	beego.InsertFilter("/*", beego.BeforeRouter, filters.FilterLoggedIn)
+	beego.InsertFilter("/admin", beego.BeforeRouter, filters.FilterAdmin)
+	beego.InsertFilter("/staff", beego.BeforeRouter, filters.FilterStaff)
 }
